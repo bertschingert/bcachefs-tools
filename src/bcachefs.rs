@@ -28,10 +28,9 @@ fn handle_c_command(mut argv: Vec<String>, symlink_cmd: Option<&str>) -> i32 {
 
     let argc: i32 = argv.len().try_into().unwrap();
 
-    let argv: Vec<_> = argv.into_iter().map(|s| CString::new(s).unwrap()).collect();
+    let argv = argv.into_iter().map(|s| CString::new(s).unwrap());
     let mut argv = argv
-        .into_iter()
-        .map(|s| Box::into_raw(s.into_boxed_c_str()).cast::<c_char>())
+        .map(|s| Box::into_raw(s.into_boxed_c_str()) as *mut c_char)
         .collect::<Box<[*mut c_char]>>();
     let argv = argv.as_mut_ptr();
 
@@ -103,11 +102,13 @@ fn main() -> ExitCode {
     };
 
     match cmd {
+        "debug" => commands::debug(args[1..].to_vec()).report(),
         "completions" => {
             commands::completions(args[1..].to_vec());
             ExitCode::SUCCESS
         }
         "list" => commands::list(args[1..].to_vec()).report(),
+        "list_bkeys" => commands::list_bkeys().report(),
         "mount" => commands::mount(args, symlink_cmd).report(),
         "subvolume" => commands::subvolume(args[1..].to_vec()).report(),
         _ => ExitCode::from(u8::try_from(handle_c_command(args, symlink_cmd)).unwrap()),
