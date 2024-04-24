@@ -9,6 +9,15 @@
 
 #include "tools-util.h"
 
+struct bkey_update {
+	enum btree_id id;
+	enum bch_bkey_type bkey;
+	bool inode_unpacked;
+	u64 offset;
+	u64 size;
+	u64 value;
+};
+
 int cmd_format(int argc, char *argv[]);
 int cmd_show_super(int argc, char *argv[]);
 int cmd_reset_counters(int argc, char *argv[]);
@@ -53,6 +62,9 @@ int cmd_subvolume_delete(int argc, char *argv[]);
 int cmd_subvolume_snapshot(int argc, char *argv[]);
 
 int cmd_fusemount(int argc, char *argv[]);
+
+int cmd_dump_bkey(struct bch_fs *, enum btree_id, struct bpos);
+int cmd_update_bkey(struct bch_fs *, struct bkey_update, struct bpos);
 
 void bcachefs_usage(void);
 int device_cmds(int argc, char *argv[]);
