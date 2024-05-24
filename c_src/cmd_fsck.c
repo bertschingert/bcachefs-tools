@@ -178,7 +178,6 @@ int cmd_fsck(int argc, char *argv[])
 	append_opt(&opts_str, "degraded");
 	append_opt(&opts_str, "fsck");
 	append_opt(&opts_str, "fix_errors=ask");
-	append_opt(&opts_str, "read_only");
 
 	while ((opt = getopt_long(argc, argv,
 				  "apynfo:rRkvh",
