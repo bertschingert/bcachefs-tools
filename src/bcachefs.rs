@@ -103,6 +103,7 @@ fn main() -> ExitCode {
     };
 
     match cmd {
+        "debug" => commands::debug(args[1..].to_vec()).report(),
         "completions" => {
             commands::completions(args[1..].to_vec());
             ExitCode::SUCCESS

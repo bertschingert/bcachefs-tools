@@ -54,6 +54,8 @@ int cmd_subvolume_snapshot(int argc, char *argv[]);
 
 int cmd_fusemount(int argc, char *argv[]);
 
+int cmd_dump_bkey(struct bch_fs *, enum btree_id, struct bpos);
+
 void bcachefs_usage(void);
 int device_cmds(int argc, char *argv[]);
 int fs_cmds(int argc, char *argv[]);
