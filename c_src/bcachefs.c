@@ -86,6 +86,7 @@ void bcachefs_usage(void)
 	     "\n"
 	     "Debug:\n"
 	     "These commands work on offline, unmounted filesystems\n"
+	     "  debug                    Operate directly on the underlying btrees of a filesystem\n"
 	     "  dump                     Dump filesystem metadata to a qcow2 image\n"
 	     "  list                     List filesystem metadata in textual form\n"
 	     "  list_journal             List contents of journal\n"
@@ -94,7 +95,8 @@ void bcachefs_usage(void)
 	     "  fusemount                Mount a filesystem via FUSE\n"
 	     "\n"
 	     "Miscellaneous:\n"
-         "  completions              Generate shell completions\n"
+	     "  completions              Generate shell completions\n"
+	     "  list_bkeys               List all bkey types known to the current bcachefs version\n"
 	     "  version                  Display the version of the invoked bcachefs tool\n");
 }
 
