@@ -8,7 +8,7 @@ use bch_bindgen::fs::Fs;
 mod bkey_types;
 mod parser;
 
-use bch_bindgen::c::bpos;
+use bch_bindgen::c::{bkey_update_op, bpos};
 
 use anyhow::Result;
 
@@ -25,12 +25,64 @@ pub struct Cli {
 #[derive(Debug)]
 enum DebugCommand {
     Dump(DumpCommand),
+    Update(UpdateCommand),
 }
 
 #[derive(Debug)]
 struct DumpCommand {
     btree: String,
     bpos: bpos,
+}
+
+#[derive(Debug)]
+struct UpdateCommand {
+    btree: String,
+    bpos: bpos,
+    bkey: String,
+    field: String,
+    op: bkey_update_op,
+    value: u64,
+}
+
+fn update(fs: &Fs, type_list: &bkey_types::BkeyTypes, cmd: UpdateCommand) {
+    let id: bch_bindgen::c::btree_id = match cmd.btree.parse() {
+        Ok(b) => b,
+        Err(_) => {
+            eprintln!("unknown btree '{}'", cmd.btree);
+            return;
+        }
+    };
+
+    let (bkey, inode_unpacked) = if cmd.bkey == "bch_inode_unpacked" {
+        (c::bch_bkey_type::KEY_TYPE_MAX, true)
+    } else {
+        let bkey = match cmd.bkey["bch_".len()..].parse() {
+            Ok(k) => k,
+            Err(_) => {
+                eprintln!("unknown bkey type '{}'", cmd.bkey);
+                return;
+            }
+        };
+
+        (bkey, false)
+    };
+
+    if let Some((size, offset)) = type_list.get_member_layout(&cmd.bkey, &cmd.field) {
+        let update = c::bkey_update {
+            id,
+            bkey,
+            op: cmd.op,
+            inode_unpacked,
+            offset,
+            size,
+            value: cmd.value,
+        };
+        unsafe {
+            c::cmd_update_bkey(fs.raw, update, cmd.bpos);
+        }
+    } else {
+        println!("unknown field '{}'", cmd.field);
+    }
 }
 
 fn dump(fs: &Fs, cmd: DumpCommand) {
@@ -50,13 +102,15 @@ fn dump(fs: &Fs, cmd: DumpCommand) {
 fn usage() {
     println!("Usage:");
     println!("    dump <btree_type> <bpos>");
+    println!("    update <btree_type> <bpos> <bkey_type>.<field>=<value>");
 }
 
-fn do_command(fs: &Fs, cmd: &str) -> i32 {
+fn do_command(fs: &Fs, type_list: &bkey_types::BkeyTypes, cmd: &str) -> i32 {
     match parser::parse_command(cmd) {
         Ok(cmd) => {
             match cmd {
                 DebugCommand::Dump(cmd) => dump(fs, cmd),
+                DebugCommand::Update(cmd) => update(fs, type_list, cmd),
             };
 
             0
@@ -78,6 +132,7 @@ pub fn debug(argv: Vec<String>) -> Result<()> {
 
     let opt = Cli::parse_from(argv);
     let fs_opts: bcachefs::bch_opts = Default::default();
+    let type_list = bkey_types::get_bkey_type_info()?;
 
     if let Some(cmd) = opt.command {
         return match parser::parse_command(&cmd) {
@@ -85,6 +140,7 @@ pub fn debug(argv: Vec<String>) -> Result<()> {
                 let fs = Fs::open(&opt.devices, fs_opts)?;
                 match cmd {
                     DebugCommand::Dump(cmd) => dump(&fs, cmd),
+                    DebugCommand::Update(cmd) => update(&fs, &type_list, cmd),
                 }
 
                 Ok(())
@@ -103,7 +159,7 @@ pub fn debug(argv: Vec<String>) -> Result<()> {
     prompt();
     let stdin = std::io::stdin();
     for line in stdin.lock().lines() {
-        do_command(&fs, &line.unwrap());
+        do_command(&fs, &type_list, &line.unwrap());
         prompt();
     }
 
