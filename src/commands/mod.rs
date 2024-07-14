@@ -7,6 +7,7 @@ pub mod mount;
 pub mod subvolume;
 
 pub use completions::completions;
+pub use debug::debug;
 pub use debug::list_bkeys;
 pub use list::list;
 pub use mount::mount;
