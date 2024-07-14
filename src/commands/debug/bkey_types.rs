@@ -13,6 +13,15 @@ impl BkeyTypes {
     pub fn new() -> Self {
         BkeyTypes(Vec::new())
     }
+
+    /// Given a struct name and a member name, return the size and offset of
+    /// the member within the struct, or None if it does not exist.
+    pub fn get_member_layout(&self, outer: &str, member: &str) -> Option<(u64, u64)> {
+        self.0
+            .iter()
+            .find(|i| i.name == *outer)
+            .and_then(|i| i.member_layout(member))
+    }
 }
 
 impl std::fmt::Display for BkeyTypes {
@@ -37,6 +46,17 @@ impl std::fmt::Display for BkeyTypes {
 pub struct BchStruct {
     name: String,
     pub members: Vec<BchMember>,
+}
+
+impl BchStruct {
+    /// Given a struct member name, return the size and offset of the member
+    /// within its parent, or None if there is no member with the given name.
+    pub fn member_layout(&self, name: &str) -> Option<(u64, u64)> {
+        self.members
+            .iter()
+            .find(|i| i.name == *name)
+            .map(|i| (i.size, i.offset))
+    }
 }
 
 /// The representation of a struct member. We need its name, size, and offset

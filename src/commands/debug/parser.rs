@@ -1,13 +1,13 @@
 use nom::branch::alt;
-use nom::bytes::complete::tag;
+use nom::bytes::complete::{tag, take_while};
 use nom::character::complete::{alpha1, char, space1, u32, u64};
 use nom::combinator::{all_consuming, value};
 use nom::sequence::tuple;
 use nom::IResult;
 
-use bch_bindgen::c::bpos;
+use bch_bindgen::c::{bkey_update_op, bpos};
 
-use crate::commands::debug::{DebugCommand, DumpCommand};
+use crate::commands::debug::{DebugCommand, DumpCommand, UpdateCommand};
 
 fn parse_bpos(input: &str) -> IResult<&str, bpos> {
     let (input, (inode, _, offset, _, snapshot)) = tuple((
@@ -41,10 +41,58 @@ fn parse_dump_cmd(input: &str) -> IResult<&str, DebugCommand> {
     ))
 }
 
-fn parse_command_inner(input: &str) -> IResult<&str, DebugCommand> {
-    let (input, _) = tag("dump")(input)?;
+fn bkey_name(input: &str) -> IResult<&str, &str> {
+    take_while(|c: char| c.is_alphanumeric() || c == '_')(input)
+}
 
-    parse_dump_cmd(input)
+fn field_name(input: &str) -> IResult<&str, &str> {
+    take_while(|c: char| c.is_alphanumeric() || c == '_' || c == '.')(input)
+}
+
+fn bkey_op(input: &str) -> IResult<&str, bkey_update_op> {
+    let (input, op) = alt((tag("="), tag("+=")))(input)?;
+    match op {
+        "=" => Ok((input, bkey_update_op::BKEY_CMD_SET)),
+        "+=" => Ok((input, bkey_update_op::BKEY_CMD_ADD)),
+        _ => unreachable!(),
+    }
+}
+
+fn parse_update_cmd(input: &str) -> IResult<&str, DebugCommand> {
+    let (input, (_, btree, _, bpos, _, bkey, _, field, op, value)) = all_consuming(tuple((
+        space1,
+        alpha1,
+        space1,
+        parse_bpos,
+        space1,
+        bkey_name,
+        char('.'),
+        field_name,
+        bkey_op,
+        u64,
+    )))(input)?;
+
+    Ok((
+        input,
+        DebugCommand::Update(UpdateCommand {
+            btree: btree.to_string(),
+            bpos,
+            bkey: bkey.to_string(),
+            field: field.to_string(),
+            op,
+            value,
+        }),
+    ))
+}
+
+fn parse_command_inner(input: &str) -> IResult<&str, DebugCommand> {
+    let (input, cmd) = alt((tag("dump"), tag("update")))(input)?;
+
+    match cmd {
+        "dump" => parse_dump_cmd(input),
+        "update" => parse_update_cmd(input),
+        _ => unreachable!(),
+    }
 }
 
 /// Given an input string, tries to parse it into a valid
