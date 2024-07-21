@@ -21,9 +21,17 @@ fn list_keys(fs: &Fs, opt: &Cli) -> anyhow::Result<()> {
         BtreeIterFlags::ALL_SNAPSHOTS | BtreeIterFlags::PREFETCH,
     );
 
+    let mut n: u64 = 0;
     while let Some(k) = iter.peek_and_restart()? {
         if k.k.p > opt.end {
             break;
+        }
+
+        if let Some(m) = opt.num_keys {
+            if n >= m {
+                break;
+            }
+            n += 1;
         }
 
         if let Some(ty) = opt.bkey_type {
@@ -139,6 +147,10 @@ pub struct Cli {
     /// End position
     #[arg(short, long, default_value = "SPOS_MAX")]
     end: bcachefs::bpos,
+
+    /// Number of keys to list, default unlimited
+    #[arg(short, long, default_value = None)]
+    num_keys: Option<u64>,
 
     #[arg(short, long, default_value = "keys")]
     mode: Mode,
